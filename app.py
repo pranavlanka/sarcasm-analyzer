@@ -346,43 +346,176 @@ if __name__ == "__main__":
 
 import streamlit as st
 
+# 🔥 MUST: paste your entire Python analyzer code ABOVE this (your analyze() function)
+
+# ─────────────────────────────────────────────
+# Page Config
+# ─────────────────────────────────────────────
 st.set_page_config(page_title="Sarcasm Analyzer", layout="centered")
 
-st.title("🧠 Sarcasm & Sentiment Analyzer")
-st.caption("Semantics • Pragmatics • Discourse")
+# ─────────────────────────────────────────────
+# Custom CSS (from your HTML)
+# ─────────────────────────────────────────────
+st.markdown("""
+<style>
+body {
+    background-color: #0a0a0f;
+    color: #e2e8f0;
+}
 
-# Input
-text = st.text_area("Enter your sentence")
+.main {
+    background-color: #0a0a0f;
+}
 
-use_context = st.checkbox("Add previous context")
+h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff 30%, #ff4d6d 70%, #fbbf24 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+}
+
+.card {
+    background: #16161f;
+    border: 1px solid #2a2a3a;
+    padding: 1.5rem;
+    border-radius: 14px;
+    margin-bottom: 1rem;
+}
+
+.badge {
+    text-align: center;
+    color: #ff4d6d;
+    font-size: 0.8rem;
+}
+
+.label {
+    color: #64748b;
+    font-size: 0.7rem;
+}
+
+.pos { color: #4ade80; }
+.neg { color: #f87171; }
+.neu { color: #94a3b8; }
+.sar { color: #ff4d6d; }
+
+</style>
+""", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────
+# Header
+# ─────────────────────────────────────────────
+st.markdown("<div class='badge'>🧠 NLP Project · 3-Layer Analysis</div>", unsafe_allow_html=True)
+st.markdown("<h1>Sarcasm & Sentiment Analyzer</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;color:#64748b'>Detects what you really mean — not just what you said.</p>", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────
+# Input Card
+# ─────────────────────────────────────────────
+st.markdown("<div class='card'>", unsafe_allow_html=True)
+
+text = st.text_area("📝 Input Sentence", placeholder="e.g. Great, another exam 😒")
+
+use_context = st.checkbox("💬 Add previous message (context)")
 context = None
-
 if use_context:
-    context = st.text_area("Previous message")
+    context = st.text_area("Previous Message")
 
-# Analyze button
-if st.button("Analyze"):
-    if text.strip():
-        result = analyze(text, context)
+col1, col2 = st.columns([1,1])
 
-        st.subheader("📊 Results")
+with col1:
+    analyze_btn = st.button("Analyze")
 
-        col1, col2 = st.columns(2)
+with col2:
+    clear_btn = st.button("Clear")
 
-        with col1:
-            st.metric("Surface Sentiment", result.surface_sentiment, result.surface_score)
+st.markdown("</div>", unsafe_allow_html=True)
 
-        with col2:
-            st.metric("True Sentiment", result.true_sentiment, result.true_score)
+# Clear
+if clear_btn:
+    st.experimental_rerun()
 
-        st.subheader("🎭 Sarcasm")
-        st.write("Detected:", "YES" if result.sarcasm_detected else "NO")
-        st.progress(result.sarcasm_confidence)
+# ─────────────────────────────────────────────
+# Analysis
+# ─────────────────────────────────────────────
+if analyze_btn and text.strip():
+    result = analyze(text, context)
 
-        if result.sarcasm_signals:
-            st.write("Signals:")
-            for s in result.sarcasm_signals:
-                st.write("•", s)
+    # Verdict Banner
+    if result.sarcasm_detected:
+        verdict_color = "#ff4d6d"
+        emoji = "🎭"
+    elif result.true_sentiment == "Positive":
+        verdict_color = "#4ade80"
+        emoji = "😊"
+    elif result.true_sentiment == "Negative":
+        verdict_color = "#f87171"
+        emoji = "😞"
+    else:
+        verdict_color = "#94a3b8"
+        emoji = "😐"
 
-        st.subheader("💡 Explanation")
-        st.write(result.explanation)
+    st.markdown(f"""
+    <div class='card' style='border:1px solid {verdict_color}'>
+        <h3 style='color:{verdict_color}'>{emoji} {result.true_sentiment}</h3>
+        <p>"{result.text}"</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Results Grid ──
+    col1, col2 = st.columns(2)
+
+    with col1:
+        color = "pos" if result.surface_sentiment=="Positive" else "neg" if result.surface_sentiment=="Negative" else "neu"
+        st.markdown(f"""
+        <div class='card'>
+            <div class='label'>Surface Sentiment</div>
+            <h2 class='{color}'>{result.surface_sentiment}</h2>
+            <p>Score: {result.surface_score}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        color = "pos" if result.true_sentiment=="Positive" else "neg" if result.true_sentiment=="Negative" else "neu"
+        st.markdown(f"""
+        <div class='card'>
+            <div class='label'>True Sentiment</div>
+            <h2 class='{color}'>{result.true_sentiment}</h2>
+            <p>Score: {result.true_score}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ── Sarcasm Meter ──
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
+    st.markdown("### 🎭 Sarcasm Confidence")
+
+    st.progress(result.sarcasm_confidence)
+
+    st.write("Detected:", "YES" if result.sarcasm_detected else "NO")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # ── Explanation ──
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
+    st.markdown("### 💡 Explanation")
+    st.write(result.explanation)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # ── Signals ──
+    if result.sarcasm_signals:
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.markdown("### 🚨 Sarcasm Signals")
+        for s in result.sarcasm_signals:
+            st.write("⚡", s)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ── Breakdown ──
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
+    st.markdown("### 🧠 Layer Breakdown")
+
+    st.write("**Semantics:**", result.layer_breakdown["semantics"]["label"])
+    st.write("**Pragmatics:**", "Sarcasm" if result.sarcasm_detected else "Genuine")
+    st.write("**Discourse:**", result.layer_breakdown["discourse"]["note"])
+
+    st.markdown("</div>", unsafe_allow_html=True)
